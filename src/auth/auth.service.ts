@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -13,12 +14,15 @@ import { RegisterUserDto } from './dto/register-user.dto';
 
 @Injectable()
 export class AuthService {
+  private logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<UserDto | null> {
+    this.logger.debug(`Attempting to validate user with email: ${email}`);
     const user = await this.prismaService.user.findUnique({
       where: {
         email,
@@ -28,6 +32,7 @@ export class AuthService {
       const { password, ...rest } = user;
       return rest;
     }
+    this.logger.warn(`Invalid credentials for email: ${email}`);
     return null;
   }
 
@@ -37,13 +42,14 @@ export class AuthService {
         sub: user.id,
         email: user.email,
       });
-
+      this.logger.log(`User logged in: ${user.email}`);
       return generalResponse(
         HttpStatus.OK,
         { token },
         'Authorization successful',
       );
     } catch (error) {
+      this.logger.error(`Login error for user ${user.email}: ${error.message}`);
       throw new HttpException(
         { status: false, code: HttpStatus.BAD_REQUEST, message: error.message },
         HttpStatus.BAD_REQUEST,
@@ -52,11 +58,13 @@ export class AuthService {
   }
 
   async register(dto: RegisterUserDto): Promise<GeneralInnerResponse<UserDto>> {
+    this.logger.log(`Starting registration for email: ${dto.email}`);
     try {
       const exists = await this.prismaService.user.findUnique({
         where: { email: dto.email },
       });
       if (exists) {
+        this.logger.warn(`Email already registered: ${dto.email}`);
         throw new ConflictException('Email already registered');
       }
 
@@ -78,6 +86,8 @@ export class AuthService {
         email: user.email,
       });
 
+      this.logger.log(`Registration successful for email: ${dto.email}`);
+
       return generalResponse(
         HttpStatus.CREATED,
         {
@@ -87,6 +97,7 @@ export class AuthService {
         'Registration successful',
       );
     } catch (error) {
+      this.logger.error(`Registration error for email ${dto.email}: ${error.message}`);
       throw new HttpException(
         { status: false, code: HttpStatus.BAD_REQUEST, message: error.message },
         HttpStatus.BAD_REQUEST,
@@ -96,8 +107,10 @@ export class AuthService {
 
   async logout(res: Response) {
     try {
+      this.logger.log('User logged out successfully');
       return generalResponse(HttpStatus.OK, null, 'Logout successful');
     } catch (error) {
+      this.logger.error(`Logout error: ${error.message}`);
       throw new HttpException(
         {
           status: false,

@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { Borrow } from '@prisma/client';
 import { BooksService } from 'src/books/books.service';
@@ -12,6 +13,8 @@ import { GeneralInnerResponse, generalResponse } from 'utils/response';
 
 @Injectable()
 export class BorrowService {
+  private readonly logger = new Logger(BorrowService.name);
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly bookService: BooksService,
@@ -21,6 +24,7 @@ export class BorrowService {
     userId: string,
     bookId: string,
   ): Promise<GeneralInnerResponse<Borrow>> {
+    this.logger.log(`borrow called with userId=${userId}, bookId=${bookId}`);
     try {
       const book = (await this.bookService.findOne(bookId)).data;
       if (!book) {
@@ -51,12 +55,14 @@ export class BorrowService {
           },
         });
       });
+      this.logger.log(`borrow successful for bookId=${bookId}, borrowId=${borrow.id}`);
       return generalResponse(
         HttpStatus.CREATED,
         borrow,
         'книжка успешно выдана',
       );
     } catch (error) {
+      this.logger.error(`borrow failed with error: ${error.message}`, error.stack);
       throw new HttpException(
         {
           status: false,
@@ -69,6 +75,7 @@ export class BorrowService {
   }
 
   async return_borrow(borrowId: string): Promise<GeneralInnerResponse<Borrow>> {
+    this.logger.log(`return_borrow called with borrowId=${borrowId}`);
     try {
       const borrow = await this.prismaService.borrow.findUnique({
         where: { id: borrowId },
@@ -96,13 +103,14 @@ export class BorrowService {
           });
         },
       );
-
+      this.logger.log(`return_borrow successful for borrowId=${borrowId}`);
       return generalResponse(
         HttpStatus.OK,
         closed_borrow,
         'книжка успешно возвращена',
       );
     } catch (error) {
+      this.logger.error(`return_borrow failed with error: ${error.message}`, error.stack);
       throw new HttpException(
         {
           status: false,
@@ -115,6 +123,7 @@ export class BorrowService {
   }
 
   async listBorrowed(): Promise<GeneralInnerResponse<Array<Borrow>>> {
+    this.logger.log(`listBorrowed called`);
     try {
       const borrowed = await this.prismaService.borrow.findMany({
         where: { returnDate: null },
@@ -128,12 +137,14 @@ export class BorrowService {
           book: true,
         },
       });
+      this.logger.log(`listBorrowed successful, found ${borrowed.length} items`);
       return generalResponse(
         HttpStatus.OK,
         borrowed,
         'все не возвращенные книги',
       );
     } catch (error) {
+      this.logger.error(`listBorrowed failed with error: ${error.message}`, error.stack);
       throw new HttpException(
         {
           status: false,
@@ -149,18 +160,21 @@ export class BorrowService {
   async userHistory(
     userId: string,
   ): Promise<GeneralInnerResponse<Array<Borrow>>> {
+    this.logger.log(`userHistory called with userId=${userId}`);
     try {
       const history = await this.prismaService.borrow.findMany({
         where: { userId },
         orderBy: { borrowDate: 'desc' },
         include: { book: true },
       });
+      this.logger.log(`userHistory successful for userId=${userId}, found ${history.length} items`);
       return generalResponse(
         HttpStatus.OK,
         history,
         'история пользователя'
       )
     } catch (error) {
+      this.logger.error(`userHistory failed with error: ${error.message}`, error.stack);
       throw new HttpException(
         {
           status: false,

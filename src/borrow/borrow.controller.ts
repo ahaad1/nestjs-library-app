@@ -1,4 +1,3 @@
-// src/borrow/borrow.controller.ts
 import {
   Body,
   Controller,
@@ -8,9 +7,11 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -20,8 +21,11 @@ import {
 import { BorrowService } from './borrow.service';
 import { BorrowRequestDto } from './dto/borrow-request.dto';
 import { ReturnRequestDto } from './dto/return-request.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Borrow')
+@ApiBearerAuth('jwt')
+@UseGuards(AuthGuard('jwt'))
 @Controller()
 export class BorrowController {
   constructor(private readonly borrowService: BorrowService) {}

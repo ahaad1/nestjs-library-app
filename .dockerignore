@@ -1,0 +1,13 @@
+.git
+node_modules
+npm-debug.log
+Dockerfile
+docker-compose.yml
+dist
+.env
+.env.local
+.prisma
+coverage
+.vscode
+.idea
+.gitignore
